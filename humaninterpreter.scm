@@ -1,0 +1,143 @@
+#lang racket
+(require "logicsentences.scm")
+
+(define (println toprint)
+  (display toprint)
+  (newline)
+)
+
+(define (myelse )
+  (> 3 1)
+  )
+
+
+
+(provide str->lst create-table add-reference-table)
+ 
+
+(define (str->lst data)
+  (str->lst-aux (string-split data ) '())
+  )
+
+
+(define (to-close-pharentesis in)
+  (cond
+    ((equal? (string-ref (car in) (- (string-length (car in)) 1)) #\)) 
+     (cdr in)
+     ) 
+    ((eval '#t) 
+     (to-close-pharentesis (cdr in))
+     )
+    )
+  )
+
+(define (str->lst-aux in out)
+  (cond
+    ((null? in)
+     out
+     )
+    ;si el primero es un parentesis
+    ((equal? (string-ref (car in) 0) #\()
+     (str->lst-aux
+      (to-close-pharentesis in)
+      (append out 
+               (list (str->lst-aux (cdr in) (list (string->symbol (substring (car in) 1 (string-length (car in))))))))
+      )
+     )
+    ;si el ultimo es un parentesis
+    ((equal? (string-ref (car in) (- (string-length (car in)) 1)) #\))
+     (append out (list (string->symbol (substring (car in) 0 (- (string-length (car in) ) 1)) ))))
+  (else
+   (str->lst-aux (cdr in) (append out (list (string->symbol (car in)))))
+   )
+  )
+  )
+
+
+(define (create-table enviroment input-text)
+  (create-table-aux enviroment (cdr (str->lst input-text)))
+  )
+
+(define (create-table-aux enviroment list-table)
+  (create-table-aux-aux enviroment (car list-table) (car (cdr list-table)) (cddr list-table))
+  )
+
+(define (non-repeated-table-name? tables table-name) 
+  (cond
+    ((null? tables) #t)
+    ((null? (car tables)) #t)
+    ((NOT (equal? (caar tables) table-name)) 
+     (non-repeated-table-name? (cdr tables) table-name)
+    )
+    ((myelse) #f)
+  )
+)
+
+(define (non-repeated-table-attribute? columns) 
+  (cond
+    ((null? columns) #t)
+    ((myelse) 
+     (AND (NOT (exist-element-on-table? (car columns) (cdr columns))) (non-repeated-table-attribute? (cdr columns)))
+    )
+  )
+)
+
+
+(define (exist-element-on-table? element columns) 
+  (cond
+    ((null? columns) #f)
+    ((NOT (equal? (car columns) element)) 
+     (exist-element-on-table? element (cdr columns))
+    )
+    ((myelse) #t)
+  )
+)
+
+   
+(define (create-table-aux-aux enviroment tablename primarykey columnames)
+  (cond
+    ((AND (non-repeated-table-name? (car enviroment) tablename) (non-repeated-table-attribute? (cons primarykey columnames)))
+     (append (list (append (car enviroment) (list (list tablename primarykey columnames '(()))))) (cdr enviroment))
+    )
+     ((println "El nombre de la tabla esta repetido, o alguna columna de la tabla esta repetida, por favor verifique su entrada.") enviroment)
+  )
+)
+
+
+
+(define (add-reference-table enviroment input-text)
+  (add-reference-aux enviroment (cdr (str->lst input-text)))
+  )
+
+(define (add-reference-aux enviroment table-list)
+  (println table-list)
+  (add-reference-aux-aux enviroment (car table-list) (cadr table-list) (caddr table-list))
+)
+
+(define (add-reference-aux-aux enviroment table foreing-key source-table)
+  (cond
+  ((NOT (equal? table source-table))
+    (add-reference-aux-aux-aux (car enviroment) (cdr enviroment) table foreing-key source-table '())
+   )
+  ((myelse)
+   enviroment
+   )
+  )
+)
+
+(define (add-reference-aux-aux-aux tables procediments table foreing-key source-table out)
+  (cond
+    ((null? tables)
+     (append (list out) (list procediments))
+     )
+    ((equal? (caar tables) table)
+     (println "secondo")
+     (append (list out (list (append (car tables) (list (list source-table foreing-key))) (cdr tables))) procediments)
+     )
+    ((myelse) (println "hola") (add-reference-aux-aux-aux (cdr tables) procediments table foreing-key source-table (append (list out) (list (car tables)))))
+    )
+)
+
+(define (append-reference tabla source-table foreing-key)
+  ;(append (cdr tabl
+  )

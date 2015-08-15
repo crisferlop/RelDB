@@ -1,0 +1,1 @@
+("5.3.6" ("680c991e01842df2b920fbe32312127052099ae9" . "28489fa8d21baccf782ff15437fe900c8b6e4625") #"/home/cristianfernando/Escritorio/Proyecto1/Program/logicsentences.scm" (collects #"racket" #"main.rkt") (collects #"racket" #"lang" #"reader.rkt"))
