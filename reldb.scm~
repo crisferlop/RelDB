@@ -25,34 +25,15 @@
    ((add-ref-exp? input-text)
     (add-reference-table enviroment input-text)
     )
-   ((insert-record-exp? input-text)
-    (insert-record enviroment input-text)
-    )
-   ((remove-record-exp? input-text)
-    (delete-record enviroment input-text)
-    )
-   ((update-record-exp? input-text)
-    (update-record enviroment input-text)
-    )
-   ((querry-exp? input-text)
-    (simple-query enviroment input-text)
-    )
-   ((querry-specific-exp? input-text)
-    (especific-query enviroment input-text)
-    )
-   ((querry-specific-filtred-exp? input-text)
-    (especific-query-with-filter enviroment input-text)
-    )
-   ((specific-insert-record-exp? input-text)
-    (println "insercion especifica")
-    (insert-record-specific enviroment input-text)
-    )
-   ((myelse) (println "Comando incorrecto, consulte el manual de usuario.") enviroment)
+   (else enviroment)
    )
   )
 
 (define (reldb db)
+  (println db)
   (println "que desea realizar?")
+  
+  (println (add-reference-table (create-table (create-table (create-table db "addt t1 i 1") "addt t2 i 1") "addt t3 i 1") "addr t3 i t1"))
   (display "> ")
   (cond 
    ((null? db)
@@ -72,11 +53,3 @@
 
 
 ;(exit)
-
-;addt estudiantes id nombre appel
-;insert estudiantes 604220930 cristian rivera
-;insert estudiantes (id nombre appel) 604220930 cristian rivera
-;rr estudiantes 604220930
-;ud estudiantes 604220930 nombre Cris appel Rivers
-;query estudiantes
-;query estudiantes (all) fil tro

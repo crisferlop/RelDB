@@ -1,1 +1,1 @@
-("5.3.6" ("996050721ff98b2e7dcc68785d448f9a008b6920" . "28489fa8d21baccf782ff15437fe900c8b6e4625") #"/home/cristianfernando/Escritorio/Proyecto1/Program/logicsentences.scm" (collects #"racket" #"main.rkt") (collects #"racket" #"lang" #"reader.rkt"))
+("5.3.6" ("a3dfd50dfbc8137290769f3632ebf92f9c4d0c3e" . "28489fa8d21baccf782ff15437fe900c8b6e4625") #"/home/cristianfernando/Escritorio/Proyecto1/Program/logicsentences.scm" (collects #"racket" #"main.rkt") (collects #"racket" #"lang" #"reader.rkt"))
