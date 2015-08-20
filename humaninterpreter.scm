@@ -1,6 +1,6 @@
 #lang racket
 (require "logicsentences.scm")
-(require "iopatternverificator.scm")
+;(require "iopatternverificator.scm")
 
 ;funcion println
 ;recibe el objeto que se desea imprimir en pantalla, e imprime un salto de linea
@@ -15,8 +15,8 @@
   (> 3 1)
   )
 
-(provide str->lst create-table add-reference-table insert-record delete-record update-record simple-query especific-query 
-         especific-query-with-filter insert-record-specific)
+(provide str->lst lst->str lenght-list? create-table add-reference-table insert-record delete-record update-record simple-query especific-query 
+         especific-query-with-filter insert-record-specific store-procedure exist-procedure? get-explicit-procedure)
 
 
 
@@ -31,13 +31,16 @@
 ;recibe una lista de string la funcion retorna una sublista de la lista, se retorna aquella sublista que esta despues
 ;de aquel elemento que termina con el caracter ")"
 ;ejemplo se recibe la lista ("1" "2" "3)" "4") se retorna ("4")
-(define (to-close-pharentesis in)
+(define (to-close-pharentesis in help-out)
   (cond
+    ((null? in)
+     (cdr help-out)
+     )
     ((equal? (string-ref (car in) (- (string-length (car in)) 1)) #\)) 
      (cdr in)
      ) 
     ((myelse) 
-     (to-close-pharentesis (cdr in))
+     (to-close-pharentesis (cdr in) help-out)
      )
     )
   )
@@ -62,7 +65,7 @@
         )
        ((myelse)
         (str->lst-aux
-         (to-close-pharentesis in)
+         (to-close-pharentesis in in)
          (append out 
                  (list (str->lst-aux (cdr in) (list (string->symbol (substring (car in) 1 (string-length (car in))))))))
          )
@@ -198,18 +201,18 @@
   (cond
     ((AND (AND (NOT (equal? table source-table)) (exist-table? (car enviroment) table)) (exist-table? (car enviroment) source-table))
      (cond 
-       ((exist-element-on-table? foreing-key 
-                                 (append (list (cadr (get-table (car enviroment) source-table))) (caddr (get-table (car enviroment) source-table))))
+       ((NOT (exist-element-on-table? foreing-key 
+                                 (append (list (cadr (get-table (car enviroment) source-table))) (caddr (get-table (car enviroment) source-table)))))
         (append (list (add-reference-aux-aux-aux (car enviroment) (cdr enviroment) table foreing-key source-table)) (cdr enviroment))
         )
        ((myelse)
-        (println "La llave foranea es incorrecta verifique su entrada.")
+        (println "La llave foranea ha tomando el nombre de una de las columnas existentes, verifique su entrada y cambie el nombre de la llave foranea.")
         enviroment
         )
        )
      )
     ((myelse)
-     (println "Alguna de las tablas insertadas no existen. Verifique su entrada.")
+     (println "Alguna de las tablas insertadas no existen o las tablas insertadas son iguales. Verifique su entrada.")
      enviroment
      )
     )
@@ -235,7 +238,18 @@
 ;se encarga de insertar  la referencia en la tabla deseada, recibe una tabla, el nombre de una tabla ajena (foranea) y una llave foranea 
 ;retorna la nueva tabla de datos
 (define (append-reference tabla source-table foreing-key)
-  (append-reference-aux tabla source-table foreing-key '() 0)
+  (cond
+    ((null? (cddddr tabla)) (append-reference-aux tabla source-table foreing-key '() 0))
+    ((exist-table? (car (cddddr tabla)) source-table)
+     (display "Ya existe una llave foranea hacia la tabla: ")
+     (display source-table)
+     (println ".")
+     tabla
+     )
+    ((myelse)
+     (append-reference-aux tabla source-table foreing-key '() 0)
+     )
+    )
   )
 
 
@@ -247,7 +261,14 @@
 (define (append-reference-aux in source-table foreing-key out counter)
   (cond
     ((= counter 4) 
-     (append out (list (list source-table foreing-key)))
+     (cond
+       ((null? in)
+        (append out (list (list (list source-table foreing-key))))
+        )
+       ((myelse)
+        (append out (list (append (car in) (list (list source-table foreing-key)))))
+        )
+       )
      )
     ((myelse)
      (append-reference-aux (cdr in) source-table foreing-key (append out (list (car in))) (+ counter 1)) 
@@ -407,15 +428,17 @@
 
 
 
-;funcion insert-record
-;recibe la variable ambiente, y el comando ingresado por el usuario
+;funcion insert-record-specific
+;recibe la variable ambiente, y el comando ingresado por el usuario, este comando funciona para ingresar un record con columnas
+;espeficas.
 ;retorna la nueva variable de entorno
 (define (insert-record-specific enviroment input-text)
   (insert-record-specific-aux enviroment (cdr (str->lst input-text)))
   )
 
-;funcion insert-record-aux
-;recibe la variable de ambiente y la lista de datos que fue parseada de string a lista, en caso de no existir la funcion
+;funcion insert-record-specific-aux
+;Funcion de ayuda para la funcion insert-record-specific.
+;verifica si existe la tabla de no existir retornara la variable de ambiente y un mensaje citando la inexistencia de la tabla
 ;retona la nueva variable de ambiente
 (define (insert-record-specific-aux enviroment in)
   (cond 
@@ -430,23 +453,25 @@
   )
 
 
-;funcion insert-record-aux-aux
-;es la funcion de auxilio de insert-record, inserta un record en una tabla y luego retorna la nueva tabla
-;recibe la tabla y el registro a insertar
+;funcion insert-record-specific-aux-aux
+;es la funcion de auxilio de insert-record-specific-aux, se encarga de verificar si la existe la columna de la clave principal en el 
+;filtro en caso de que no exista esta columna retorna la variable de entorno intacta, y un mensaje que indica esto.
+;recibe la tabla, el filtro de columnas y el registro a insertar
 ;retorna la nueva tabla
 (define (insert-record-specific-aux-aux tables filter in)
   (cond
     ((null? tables)
      '()
      )
-    ;change-record-columns
     ((equal? (caar tables) (car in))
      (cond
        ((= (lenght-list? filter) (lenght-list? (cdr in)))
         (cond
+          ;aqui es donde se verifica si existe la columna de la llave primaria
+          ;tambien servira para verificar si existen las columnas de llaves foraneas
           ((exist-element-on-table? (cadar tables) filter)
            (append (list (append-record (car tables) (init-record-columns (get-columns-table (car tables)) 
-                   (create-nils-list (lenght-list? (get-columns-table (car tables)))) (merge-list filter (cdr in) '()) )) (cdr tables)))
+                                                                          (create-nils-list (lenght-list? (get-columns-table (car tables)))) (merge-list filter (cdr in) '()) )) (cdr tables)))
            )
           ((myelse)
            (println "No se ha insertado la la columna de la llave primaria.")
@@ -460,11 +485,15 @@
         )
        )
      )
-     ((myelse)
-      (append (append (list (car tables)) (insert-record-specific-aux-aux (cdr tables) filter in))))
-     )
+    ((myelse)
+     (append (append (list (car tables)) (insert-record-specific-aux-aux (cdr tables) filter in))))
     )
+  )
 
+;funcion merge-list
+; recibe tres parametros que son tres listas, hara una mezcla de las listas intercalando los indices
+; las listas tienen que ser del mismo tamanio
+; la tercera lista es la lista de salida
 (define (merge-list lista listb out)
   (cond
     ((null? lista)
@@ -473,10 +502,13 @@
     ((myelse)
      (merge-list (cdr lista) (cdr listb) (append out (list (car lista) (car listb))))
      )
-  )
+    )
   )
 
-
+;se encarga de cambiar los elementos de una lista de nils por los citados en el parametro to-update que tiene que cumplir con la
+;condicion (columna1 valor1 columna 2 valor2 ... columnan valorn)
+;el parametro columns son las columnas del record
+;record es donde se insertaran los valores que se encuentra en el parametro to update y sera record el retorno de la funcion
 (define (init-record-columns columns record to-update)
   (cond
     ((null? to-update) record)
@@ -494,7 +526,11 @@
 
 
 
-
+;funcion delete-element-list
+;se encarga de eliminar un elemento de una lista
+;el parametro mlist es la lista de donde se piensa eliminar el elemento mientras que element es el elemento a borrar
+;se retornara la lista sin elemento deseado encaso de existir este en la lista en caso de no existir la lista se retorna
+;tal y como estaba al principio
 (define (delete-element-list mlist element)
   (cond
     ((null? mlist)
@@ -509,34 +545,43 @@
     )
   )
 
-(define (delete-element-table mlist element)
+
+;funcion delete-element-table
+;el parametro matrix es una matriz y element un elemento esta funcion borra la fila de una matriz que empiece con elemento citado
+;y retorna esa matriz sin ese elemento
+;un ejemplo de ello se tiene la matriz ((hola bla bla) (como bla bla bla) (estas brrrr)) y el elemento hola entonces se borrara la
+;primera fila de la matriz pues empieza con el elemento hola por lo que la matriz quedaria como ((como bla bla bla) (estas brrrr))
+;en caso de no existir una fila cuyo primer elemento sea igual a element entonce se imprimira un mensaje especificando que no
+;existe una fila asi y se retorna la matriz intacta
+(define (delete-element-table matrix element)
   (cond
-    ((null? mlist)
+    ((null? matrix)
      (display "La clave ")
      (display element)
      (println " no existe.")
      '()
      )
-    ((equal? (caar mlist) element)
-     (cdr mlist)
+    ((equal? (caar matrix) element)
+     (cdr matrix)
      )
     ((myelse)
-     (append (list (car mlist)) (delete-element-table (cdr mlist) element))
+     (append (list (car matrix)) (delete-element-table (cdr matrix) element))
      )
     )
   )
 
 
-;funcion insert-record
-;recibe la variable ambiente, y el comando ingresado por el usuario
+;funcion delete-record
+;recibe la variable ambiente, y el comando ingresado por el usuario, se encarga de borrar un record de una tabla en caso de que este
+;exista
 ;retorna la nueva variable de entorno
 (define (delete-record enviroment input-text)
   (delete-record-aux enviroment (cdr (str->lst input-text)))
   )
 
-;funcion insert-record-aux
-;recibe la variable de ambiente y la lista de datos que fue parseada de string a lista, en caso de no existir la funcion
-;retona la nueva variable de ambiente
+;funcion delete-record-aux
+;se encarga de verificar si la tabla existe en caso de existir prosigue a borrar el elemento en caso de que el elemento exista
+;si la tabla no existe arroja un mensaje que espefica esto y retorna la variable de ambiente intacta
 (define (delete-record-aux enviroment in)
   (cond 
     ((exist-table? (car enviroment) (car in))
@@ -549,20 +594,28 @@
     )
   )
 
+;funcion delete-record-aux-aux
+;recibe las tablas de la base se datos y recibe los el record a borrar dentro de una lista, borra el record si lo encuentra
+;retorna la variable las tablas con elemento borrado en caso de este haberse borrado
 (define (delete-record-aux-aux tables in)
   (cond
     ((null? tables)
      '()
      )
     ((equal? (caar tables) (car in))
-     (list (list (caar tables) (cadar tables) (caddar tables) (delete-element-table (car (cdddar tables)) (cadr in)))))
+     (append (list (list (caar tables) (cadar tables) (caddar tables) (delete-element-table (car (cdddar tables)) (cadr in)) ) ) (cdr tables)))
     ((myelse)
      (append (append (list (car tables)) (delete-record-aux-aux (cdr tables) in))))
     )
   )
 
 
-
+;funcion update-element-table
+;se encarga de actualizar un elemento en los records de una tabla la variable to-update cumple con la condicion de tener el formato
+;(column-key columna1 valor1 columna 2 valor2 ... columnan valorn) las columnas son las columnas de la tabla y records es la lista de
+;records de una tabla X. la funcion cambia los elementos de un record especifico citado en la variable to-update 
+;segun las columnas citadas en esta variable
+;retorna las lista de records con el record actualizado
 (define (update-element-table columns records to-update)
   (cond
     ((null? records)
@@ -572,7 +625,7 @@
      '()
      )
     ((equal? (caar records) (car to-update))
-     (append (list(update-element-table-aux columns (car records) (cdr to-update) '())))
+     (append (list(update-element-table-aux columns (car records) (cdr to-update) '())) (cdr records))
      )
     ((myelse)
      (append (list (car records)) (update-element-table columns (cdr records) to-update))
@@ -581,11 +634,15 @@
   )
 
 
-
+;recibe una lista de columnas y recibe una lista de parametros que cumple o no el siguiente formato
+;(columna1 valor11 valor12 ... valor1n columna2 valor21 valor22 ... valor2m columnai1 valori1 valori2 ... valorik)
+;y los pasa a la forma (columna1 valor1 columna 2 valor2 ... columnan valorn)
+;en caso de no cumplir con la primera forma pero si la segunda entonce el valor se retornara intacto
 (define (to-simple-form-for-update columns to-update)
   (to-simple-form-for-update-aux columns (cdr to-update) #t "" "" (list (car to-update)))
   )
 
+;es la funcion de ayuda para la funcion to-simple-form-for-update
 (define (to-simple-form-for-update-aux columns to-update previous-is-a-column previous-value unificator out)
   (cond
     ((null? to-update) (append out (list (string->symbol previous-value))))
@@ -599,8 +656,10 @@
     )
   )
 
-;(valid-form-for-update? '(nombre apellido) '(nombre args argas argum apellido allea))
-;(to-simple-form-for-update '(nombre apellido) '(nombre args argas argum apellido allea))
+;verifica que la lista to-update tenga al menos un elemento de la lista columns y qu este este al inicio y que cumpla con la condicion
+;(columna1 valor1 columna 2 valor2 ... columnan valorn) o con la condicion
+;(columna1 valor11 valor12 ... valor1n columna2 valor21 valor22 ... valor2m columnai1 valori1 valori2 ... valorik)
+;si se cumple con las condiciones previas entonces se arrojara #t en caso contrario #f
 (define (valid-form-for-update? columns to-update)
   (cond
     ((null? to-update) #f)
@@ -616,7 +675,7 @@
     )
   )
 
-
+;es la funcion de auxilio para la funcion valid-form-for-update?
 (define (valid-form-for-update-aux? columns to-update previous-is-a-column)
   (cond
     ((null? to-update)
@@ -635,7 +694,14 @@
     )
   )
 
-
+;funcion update-element-table-aux
+;recibe las columnas (columns) de la tabla donde se piensa actualizar un record, el record (record) que se piensa actualizar
+;los valores que se actualizaran segun la columna que cumple las condiciones validas definidas en la funcion valid-form-for-update?
+;este parametro es to-update el parametro out es la salida
+;se encarga de actualizar los elementos de un record de una tabla
+;se arroja una sentencia de advertencia en caso de haber agregado mas columnas de las que contiene la tabla
+;se arrojara una sentencia diferente si la no se cumple las condiciones validas definidas en la funcion valid-form-for-update?
+;se retornara el record actualizado
 (define (update-element-table-aux columns record to-update out)
   (cond 
     ((valid-form-for-update? columns to-update)
@@ -659,6 +725,8 @@
     )
   )
 
+
+;se encarga de cambiar las columnas de un record
 (define (change-record-columns columns record to-update)
   (cond
     ((null? to-update) record)
@@ -672,9 +740,9 @@
   (update-record-aux enviroment (cdr (str->lst input-text)))
   )
 
-;funcion insert-record-aux
-;recibe la variable de ambiente y la lista de datos que fue parseada de string a lista, en caso de no existir la funcion
-;retona la nueva variable de ambiente
+;funcion update-record-aux
+;verifica si existe la tabla en caso de existir sigue con la actualizacion del record
+;en caso contrario retorna la variable de ambiente sin cambio alguno
 (define (update-record-aux enviroment in)
   (cond 
     ((exist-table? (car enviroment) (car in))
@@ -687,16 +755,21 @@
     )
   )
 
+;funcion update-record-aux-aux
+;se encarga de actualizar el record selecionado de una tabla es la funcion de auxilio de la funcion update-record-aux
 (define (update-record-aux-aux tables in)
   (cond
     ((equal? (caar tables) (car in))
-     (list (list (caar tables) (cadar tables) (caddar tables) (update-element-table (caddar tables) (car (cdddar tables)) (cdr in)))))
+     ;(append (list (list (caar tables) (cadar tables) (caddar tables) (delete-element-table (car (cdddar tables)) (cadr in)) ) ) (cdr tables))
+     (append (list (list (caar tables) (cadar tables) (caddar tables) (update-element-table (caddar tables) (car (cdddar tables)) (cdr in)))) (cdr tables)))
     ((myelse)
      (append (append (list (car tables)) (update-record-aux-aux (cdr tables) in))))
     )
   )
 
 
+;es la funcion que se encarga de imprimir un record
+;si alguno de los elementos del record es igual a nil imprime -------- en su lugar
 (define (printlistrecords thelist)
   (cond 
     ((null? thelist) 0)
@@ -711,11 +784,13 @@
     )
   )
 
+;se encarga de hacer el query de una tabla completa, no cambia la varable de ambiente
 (define (simple-query enviroment text-input)
   (simple-query-aux (car enviroment) (cadr (str->lst text-input)))
   enviroment
   )
 
+;se encarga de buscar la tabla y verificar que exista para poder imprimirla
 (define (simple-query-aux tables table-name)
   (cond
     ((exist-table? tables table-name)
@@ -732,6 +807,7 @@
     )
   )
 
+;se encarga de imiprimir record por record una tabla
 (define (simple-query-aux-aux records)
   (cond
     ((null? records) 0)
@@ -744,11 +820,15 @@
   )
 
 
+;se encarga de hacer queries de columnas espeficas de una tabla
 (define (especific-query enviroment text-input)
   (especific-query-aux (car enviroment) (cadr (str->lst text-input)) (caddr (str->lst text-input)))
   enviroment
   )
 
+;verifica si las columnas espeficas para realizar un query son correctas y se encuentran en las columnas de una tabla
+;recibe las columnas de la tabla y las columnas especificas segun el comando ingresado por el usuario
+;en caso de que las columnas espeficias esten detro de la lista de columnas entonces se retornara #t en caso contrario #f
 (define (valid-columns columns especific-columns)
   (cond
     ((null? especific-columns) #t)
@@ -760,6 +840,9 @@
      )
     )
   )
+
+;se encarga de verificar si las columnas son validas si son validas entonces procede hacer el query de las columnas citadas
+;de una tabla especifica
 (define (especific-query-aux tables table-name especific-columns)
   (cond
     ((exist-table? tables table-name)
@@ -798,6 +881,8 @@
     )
   )
 
+
+
 (define (quit-invalid-columns columns especific-columns record)
   (cond
     ((null? especific-columns)
@@ -811,6 +896,7 @@
     )
   )
 
+;se encarga de imprimir los records segun las columnas citadas
 (define (especific-query-aux-aux records especific-columns columns)
   (cond
     ((null? records) 0)
@@ -827,12 +913,13 @@
 
 
 
-
+;se encarga de imprimir columnas especificas de una tabla y filtrar los resultados segun el filtro que aplique el usuario
 (define (especific-query-with-filter enviroment text-input)
   (especific-query-with-filter-aux (car enviroment) (cadr (str->lst text-input)) (caddr (str->lst text-input)) (cdddr (str->lst text-input)))
   enviroment
   )
 
+;es una funcion de auxilio para la funcion especific-query-with-filter
 (define (especific-query-with-filter-aux tables table-name especific-columns filter)
   (cond
     ((exist-table? tables table-name)
@@ -875,6 +962,8 @@
     )
   )
 
+
+;es la funcion de auxilio de la funcion especific-query-with-filter-aux
 (define (especific-query-with-filter-aux-aux records especific-columns columns filter)
   (cond
     ((null? records) 0)
@@ -885,13 +974,128 @@
         (println "")
         )
        )
-     (especific-query-aux-aux (cdr records) especific-columns columns)
+     (especific-query-with-filter-aux-aux (cdr records) especific-columns columns filter)
      )
     )
   )
 
+;se encarga de transformar una lista a un string seleccionando un string de pegue que pude ser espacio o cualquiera
+(define (lst->str thelist append-char)
+  (cond
+    ((null? thelist)
+     ""
+     )
+    ((null? (cdr thelist))
+     (cond 
+       ((list? (car thelist))
+        (string-append "(" (lst->str (car thelist) append-char) ")")
+        )
+       ((myelse)
+        (symbol->string (car thelist))
+        )
+       )
+     )
+    ((list? (car thelist))
+     (string-append "(" (lst->str (car thelist) append-char) ")" append-char (lst->str (cdr thelist) append-char))
+     )
+    ((myelse)
+     (string-append (symbol->string (car thelist)) append-char (lst->str (cdr thelist) append-char))
+     )
+    )
+  
+  )
 
 
+;se encarga de almacenar los procedimientos que desea guardar el usuario en la variable de entorno
+(define (store-procedure enviroment input-text)
+  (append (list (car enviroment)) (list (store-procedure-aux (cadr enviroment) (cdr (str->lst input-text)))))
+  )
+
+;es la funcion de auxilio de la funcionstore-procedure recibe la lista de procedimientos y el comando a insertar en esa lista
+;primero se verifica que el procedimiento no exista en la lista de procedimientos
+(define (store-procedure-aux procedures thecommand)
+  (cond
+    ((null? procedures)
+     (list (list (car thecommand) (cadr thecommand) (lst->str (cddr thecommand) " ")))
+     )
+    ((NOT (exist-table? procedures (car thecommand)))
+     (append procedures (list (list (car thecommand) (cadr thecommand) (lst->str (cddr thecommand) " "))))
+     )
+    ((myelse)
+     (println "el comando ingresado ya existe. por favor ingreselo con otro nombre")
+     procedures
+     )
+    )
+  )
+
+;se encarga de verificar si ya existe el procedimiento en la tabla de procedimientos
+(define (exist-procedure? enviroment input-text)
+  (exist-procedure-aux (cadr enviroment) (cdr (str->lst input-text)))
+  )
+;es la funcion de auxilio de la funcion exist-procedure?
+(define (exist-procedure-aux procedures thecommand)
+  (cond 
+    ((null? procedures)
+     #f
+     )
+    ((NOT (exist-table? procedures (car thecommand)))
+     #f
+     )
+    ((myelse)
+     #t
+     )
+    )
+  )
+
+;se encarga de parsear un procedimiento de procedimiento general a procedimiento especifico para poder llamarlo
+;se retorna "" si el procedimiento esta mal escrito si no se retorna el procedimiento que corresponda segun sea ins, rr, query o ud
+(define (get-explicit-procedure enviroment input-text)
+  (get-explicit-procedure-aux (cadr enviroment) (cdr (str->lst input-text)))
+  )
+
+;es la funcion de auxilio de la funcion get-explicit-procedure
+(define (get-explicit-procedure-aux procedures thecommand)
+  (cond
+    ((null? procedures)
+     ""
+     )
+    ((equal? (caar procedures) (car thecommand) )
+     (cond
+       ((= (lenght-list? (cadar procedures))(lenght-list? (cadr thecommand)))
+        (create-explicit-procedure (cadar procedures) (cadr thecommand) (caddar procedures))
+        )
+       ((myelse)
+        (println "La cantidad de parametros para la funcion no coincide por favor verifique los comandos ingresados.")
+        ""
+        )
+       )
+     )
+    ((myelse)
+     (get-explicit-procedure-aux (cdr procedures) thecommand)
+     )
+    )
+  )
+
+;se encarga de crear el procedimiento explicito
+;en otrar palabras parsea un procedimiento a ins,rr,ud o query segun sea el comando
+(define (create-explicit-procedure arguments specific-arguments thecommand)
+  (cond 
+    ((null? arguments)
+     thecommand
+     )
+    ((myelse)
+     (cond
+       ((symbol? (car specific-arguments))
+        (create-explicit-procedure (cdr arguments) (cdr specific-arguments) (string-replace thecommand (symbol->string (car arguments)) (symbol->string (car specific-arguments))))
+        )
+       ((myelse)
+        (println "La sintaxis ingresada es incorrecta. Verifique el manual de usuario.")
+        ""
+        )
+       )
+     )
+    )
+  )
 ;(especific-query '(((estudiantes id (nombre appel) ((604220930 cristian rivera)))) ()) "query estudiantes (id nombre)")
 ;(insert-record '(((table id (name appels) ())) ()) "ins table 604220930 cristian rivera")
 ;(change-list-position-with '(0 1 5 3 4) 2 2)

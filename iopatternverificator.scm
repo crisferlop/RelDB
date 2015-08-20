@@ -1,11 +1,18 @@
 #lang racket
 (require "logicsentences.scm")
+(require "humaninterpreter.scm")
+
+
 
 ;exporta las funciones importantes
 (provide create-table-exp? add-ref-exp? remove-ref-exp? isDefinedExpresion insert-record-exp? 
          specific-insert-record-exp? update-record-exp? remove-record-exp? remove-table-exp?
          querry-exp? cprog-exp? eval-expr? querry-specific-exp? querry-specific-filtred-exp?)
 
+
+(define (myelse )
+  (> 3 1)
+  )
 (define (isDefinedExpresion regexpresion instruction)
   (cond 
     ((AND (NOT (null? instruction)) (string? instruction)) 
@@ -22,7 +29,7 @@
 ;Verifica si la instruccion insertada es valida para insertar una tabla retornando #t si lo es #f si no
 (define (create-table-exp? instruction)
   (isDefinedExpresion "(addt|addtable) [A-Za-z]+( [A-Za-z]+)+" instruction)
-)
+  )
 
 ;funcion add-ref-exp?
 ;Verifica si la instruccion insertada es valida para crear una relacion entre tablas retornando #t si lo es #f si no
@@ -88,12 +95,53 @@
 ;funcion cprog-exp?
 ;Verifica si la instruccion insertada es valida para insertar una funcion en el programa retornando #t si lo es #f si no
 (define (cprog-exp? instruction)
-  (isDefinedExpresion "cprog [A-Za-z0-9]+ [A-Za-z0-9]+ [A-Za-z0-9]+" instruction)
+  ;(isDefinedExpresion "cprog [A-Za-z0-9]+ [A-Za-z0-9]+ [A-Za-z0-9]+" instruction)
+  (cprog-exp-aux? (str->lst (string-replace instruction "\n" "")))
+  )
+
+(define (cprog-exp-aux? thelist)
+  (cond
+    ((> (lenght-list? thelist) 3)
+     (cond
+       ((create-table-exp? (lst->str (cdddr thelist) " "))
+        #t
+        )
+       ((add-ref-exp? (lst->str (cdddr thelist) " "))
+        #t
+        )
+       ((insert-record-exp? (lst->str (cdddr thelist) " "))
+        #t
+        )
+       ((remove-record-exp? (lst->str (cdddr thelist) " "))
+        #t
+        )
+       ((update-record-exp? (lst->str (cdddr thelist) " "))
+        #t
+        )
+       ((querry-exp? (lst->str (cdddr thelist) " "))
+        #t
+        )
+       ((querry-specific-exp? (lst->str (cdddr thelist) " "))
+        #t
+        )
+       ((querry-specific-filtred-exp? (lst->str (cdddr thelist) " "))
+        #t
+        )
+       ((specific-insert-record-exp? (lst->str (cdddr thelist) " "))
+        #t
+        )
+       ((myelse)#f)
+       )
+     )
+    ((myelse)
+     #f
+     )
+    )
   )
 
 ;funcion eval-expr?
 ;Verifica si la instruccion insertada es valida para evaluar una instruccion construida por el usuario retornando #t si lo es #f si no
 (define (eval-expr? instruction)
-  (isDefinedExpresion "eval [A-Za-z0-9]+ \\(([A-Za-z0-9]+( [A-Za-z0-9]+)+\\)( [A-Za-z0-9]+)+ \\(([A-Za-z0-9]+( [A-Za-z0-9]+)+\\)( [A-Za-z0-9]+)" instruction)
+  (isDefinedExpresion "eval [A-Za-z0-9]+ \\([A-Za-z0-9]+( [A-Za-z0-9]+)*\\)" instruction)
   )
 
