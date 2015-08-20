@@ -394,7 +394,16 @@
 (define (insert-record-aux enviroment in)
   (cond 
     ((exist-table? (car enviroment) (car in))
-     (append (list (insert-record-aux-aux (car enviroment) in)) (cdr enviroment))
+     (cond
+       ((OR (null? (cddddr (get-table (car enviroment) (car in))))
+            (= (lenght-list? (get-columns-table (get-table (car enviroment) (car in)))) (lenght-list? (cdr in))))
+        (append (list (insert-record-aux-aux (car enviroment) in)) (cdr enviroment))
+        )
+       ((myelse)
+        (println "La(s) llave(s) foranea(s) del elemento no se ingresaron por favor verifique.")
+        enviroment
+        )
+       )
      )
     ((myelse)
      (println "La tabla seleccionada no existe.")
@@ -407,8 +416,25 @@
 ;obtiene todas las columnas de una tabla
 ;retorna las columnas de una tabla
 (define (get-columns-table table)
-  (append (list (cadr table)) (caddr table))
+  (cond 
+    ((null? (cddddr table))
+     (append (list (cadr table)) (caddr table))
+     )
+    ((myelse)
+     ;(append (list (cadr table)) (caddr table))
+     (append (list (cadr table)) (caddr table) (get-columns-table-aux (car (cddddr table))))
+     )
+    )
   )
+(define (get-columns-table-aux foreing-keys)
+  (cond
+    ((null? foreing-keys) '())
+    ((myelse)
+     (append (list (cadar foreing-keys)) (get-columns-table-aux (cdr foreing-keys)))
+     )
+    )
+  )
+
 
 
 ;funcion change-list-position-with
@@ -478,6 +504,26 @@
   )
 
 
+(define (have-foreing-key? foreing-keys elements)
+  (cond
+    ((null? foreing-keys)#t)
+    ((myelse)(have-foreing-key-aux? (car foreing-keys) elements))
+    )
+  )
+
+(define (have-foreing-key-aux? foreing-keys elements)
+  (cond
+    ((null? foreing-keys)#t)
+    ((null? elements)#f)
+    ((equal? (car elements) (cadar foreing-keys))
+     (have-foreing-key-aux? (cdr foreing-keys) (cdr elements))
+     )
+    ((myelse)
+     (have-foreing-key-aux? foreing-keys (cdr elements))
+     )
+    )
+  )
+
 ;funcion append-record
 ;recibe una tabla y una lista de registros a agregar a la tabla
 ;se encarga si es posible de insertar records en la tabla
@@ -486,6 +532,7 @@
   (cond
     ((>= (lenght-list? (get-columns-table table)) (lenght-list? elements))
      (cond 
+       ;si no existe el registro se insertara
        ((NOT (exist-table? (car (cdddr table)) (car elements)))
         (append (append (append (list (car table) (cadr table)) (list (caddr table)))) 
                 (append (list (append (car (cdddr table)) (list (add-nils elements (- (lenght-list? (get-columns-table table)) 
@@ -576,10 +623,18 @@
           ;aqui es donde se verifica si existe la columna de la llave primaria
           ;tambien servira para verificar si existen las columnas de llaves foraneas
           ((exist-element-on-table? (cadar tables) filter)
-           (append (list (append-record (car tables) (cdr in))) (cdr tables))
-           (append (list (append-record (car tables) (init-record-columns (get-columns-table (car tables)) 
-                                                                          (create-nils-list (lenght-list? (get-columns-table (car tables)))) (merge-list filter (cdr in) '()) )) 
-                         )(cdr tables))
+           ;(append (list (append-record (car tables) (cdr in))) (cdr tables))
+           (cond
+             ((have-foreing-key? (cddddr (car tables)) filter)
+              (append (list (append-record (car tables) (init-record-columns (get-columns-table (car tables)) 
+                                                                             (create-nils-list (lenght-list? (get-columns-table (car tables)))) (merge-list filter (cdr in) '()) )) 
+                            )(cdr tables))
+              )
+             ((myelse)
+              (println "La(s) llave(s) foranea(s) del elemento no se ingresaron por favor verifique.")
+              tables
+              )
+             )
            )
           ((myelse)
            (println "No se ha insertado la la columna de la llave primaria.")
