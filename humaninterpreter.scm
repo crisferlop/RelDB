@@ -16,7 +16,8 @@
   )
 
 (provide str->lst lst->str lenght-list? create-table add-reference-table insert-record delete-record update-record simple-query especific-query 
-         especific-query-with-filter insert-record-specific store-procedure exist-procedure? get-explicit-procedure)
+         especific-query-with-filter insert-record-specific store-procedure exist-procedure? get-explicit-procedure delete-table
+         remove-reference-table)
 
 
 
@@ -202,7 +203,7 @@
     ((AND (AND (NOT (equal? table source-table)) (exist-table? (car enviroment) table)) (exist-table? (car enviroment) source-table))
      (cond 
        ((NOT (exist-element-on-table? foreing-key 
-                                 (append (list (cadr (get-table (car enviroment) source-table))) (caddr (get-table (car enviroment) source-table)))))
+                                      (append (list (cadr (get-table (car enviroment) source-table))) (caddr (get-table (car enviroment) source-table)))))
         (append (list (add-reference-aux-aux-aux (car enviroment) (cdr enviroment) table foreing-key source-table)) (cdr enviroment))
         )
        ((myelse)
@@ -214,6 +215,109 @@
     ((myelse)
      (println "Alguna de las tablas insertadas no existen o las tablas insertadas son iguales. Verifique su entrada.")
      enviroment
+     )
+    )
+  )
+
+
+;funcion remove-reference-table
+;recibe la variable de ambiente (la base de datos) y el comando ingresado por el usuario
+;retorna la nueva variable de ambiente
+(define (remove-reference-table enviroment input-text)
+  (remove-reference-aux enviroment (cdr (str->lst input-text)))
+  )
+
+;funcion remove-reference-table-aux
+;recibe la variable de ambiente (la base de datos) y la lista del comando ingresado por el usuario sin el primer elemento
+;retorna la nueva variable de ambiente
+(define (remove-reference-aux enviroment table-list)
+  (remove-reference-aux-aux enviroment (car table-list) (cadr table-list) (caddr table-list))
+  )
+
+
+(define (remove-reference-aux-aux enviroment table foreing-key source-table)
+  (cond
+    ((AND (AND (NOT (equal? table source-table)) (exist-table? (car enviroment) table)) (exist-table? (car enviroment) source-table))
+     (cond 
+       ((null? (cddddr (get-table (car enviroment) table)))
+        (println "La llave foranea ingresada no existe o la tabla es incorrecta.")
+        enviroment
+        )
+       ((exist-element-on-table? (list source-table foreing-key) (car (cddddr (get-table (car enviroment) table))))
+        (append (list (exterminate-foreing-key (car enviroment) table foreing-key source-table)) (cdr enviroment))
+        )
+       ((myelse)
+        (println "La llave foranea ingresada no existe o la tabla es incorrecta.")
+        enviroment
+        )
+       )
+     )
+    ((myelse)
+     (println "Alguna de las tablas insertadas no existen o las tablas insertadas son iguales. Verifique su entrada.")
+     enviroment
+     )
+    )
+  )
+
+;(remove-reference-table '(((estudiantecs id (nombre appel) ()) (estudiantes id (nombre appel) () ((estudiantecs ider)))) ()) "remr estudiantes ider estudiantecs")
+
+(define (exterminate-foreing-key tables table foreing-key source-table)
+  (cond
+    ((null? tables)
+     '()
+     )
+    ((equal? (caar tables) table)
+     (append (list (exterminate-foreing-key-aux (car tables) foreing-key source-table)) (cdr tables)))
+    ((myelse)
+     (append (append (list (car tables)) (exterminate-foreing-key (cdr tables) table foreing-key source-table))))
+    )
+  )
+
+(define (exterminate-foreing-key-aux table foreing-key source-table)
+  (cond
+    ((null? (cadddr table))
+     (append (list (car table) (cadr table) (caddr table) (cadddr table) ) (list (delete-element-list (car (cddddr table)) (list source-table foreing-key))) )
+     )
+    ((myelse)
+     (println "La tabla aun contiene registros, la tabla tiene que estar vacia para poder eliminar las ralaciones")
+     table
+     )
+    )
+  )
+
+(define (delete-table enviroment text-input)
+  (delete-table-aux enviroment (cadr (str->lst text-input)))
+  ;enviroment
+  )
+(define (delete-table-aux enviroment table-name)
+  (cond
+    ((exist-table? (car enviroment) table-name)
+     (append (list (remove-table (car enviroment) table-name)) (cdr enviroment))
+     )
+    ((myelse)
+     (println "La tabla seleccionada no existe.")
+     enviroment
+     )
+    )
+  )
+(define (remove-table tables table-name)
+  (cond
+    ((null? tables)
+     '()
+     )
+    ((equal? (caar tables) table-name)
+     (cond
+       ((null? (cadddr (car tables)))
+        (cdr tables)
+        )
+       ((myelse)
+        (println "La tabla aun contiene datos, si quiere borrar una tabla esta debe estar vacia por favor verifique.")
+        tables
+        )
+       )
+     )
+    ((myelse)
+     (append (list (car tables)) (remove-table (cdr tables) table-name))
      )
     )
   )
@@ -383,7 +487,9 @@
     ((>= (lenght-list? (get-columns-table table)) (lenght-list? elements))
      (cond 
        ((NOT (exist-table? (car (cdddr table)) (car elements)))
-        (append (append (append (list (car table) (cadr table)) (list (caddr table)))) (list (append (car (cdddr table)) (list (add-nils elements (- (lenght-list? (get-columns-table table)) (lenght-list? elements)))))))
+        (append (append (append (list (car table) (cadr table)) (list (caddr table)))) 
+                (append (list (append (car (cdddr table)) (list (add-nils elements (- (lenght-list? (get-columns-table table)) 
+                                                                                      (lenght-list? elements)))))) (cddddr table)))
         )
        ((myelse)
         (println "La clave principal del elemento esta repetida por favor intente de nuevo con una clave diferente")
@@ -470,8 +576,10 @@
           ;aqui es donde se verifica si existe la columna de la llave primaria
           ;tambien servira para verificar si existen las columnas de llaves foraneas
           ((exist-element-on-table? (cadar tables) filter)
+           (append (list (append-record (car tables) (cdr in))) (cdr tables))
            (append (list (append-record (car tables) (init-record-columns (get-columns-table (car tables)) 
-                                                                          (create-nils-list (lenght-list? (get-columns-table (car tables)))) (merge-list filter (cdr in) '()) )) (cdr tables)))
+                                                                          (create-nils-list (lenght-list? (get-columns-table (car tables)))) (merge-list filter (cdr in) '()) )) 
+                         )(cdr tables))
            )
           ((myelse)
            (println "No se ha insertado la la columna de la llave primaria.")
@@ -603,7 +711,9 @@
      '()
      )
     ((equal? (caar tables) (car in))
-     (append (list (list (caar tables) (cadar tables) (caddar tables) (delete-element-table (car (cdddar tables)) (cadr in)) ) ) (cdr tables)))
+     (append (list (append 
+                    (append (list (caar tables) (cadar tables) (caddar tables) (delete-element-table (car (cdddar tables)) (cadr in)) )
+                            (cddddr (car tables))))) (cdr tables)))
     ((myelse)
      (append (append (list (car tables)) (delete-record-aux-aux (cdr tables) in))))
     )
@@ -761,7 +871,7 @@
   (cond
     ((equal? (caar tables) (car in))
      ;(append (list (list (caar tables) (cadar tables) (caddar tables) (delete-element-table (car (cdddar tables)) (cadr in)) ) ) (cdr tables))
-     (append (list (list (caar tables) (cadar tables) (caddar tables) (update-element-table (caddar tables) (car (cdddar tables)) (cdr in)))) (cdr tables)))
+     (append (list (append (list (caar tables) (cadar tables) (caddar tables) (update-element-table (caddar tables) (car (cdddar tables)) (cdr in))) (cddddr (car tables)))) (cdr tables)))
     ((myelse)
      (append (append (list (car tables)) (update-record-aux-aux (cdr tables) in))))
     )
@@ -797,6 +907,14 @@
      (println "============================================================================================================")
      (display "Tabla: ")
      (println table-name)
+     (cond
+       ((null? (cddddr (car tables)))
+        (println "Esta tabla no se relaciona con ninguna otra.")
+        )
+       ((myelse)
+        (print-relations-table (car (cddddr (car tables))))
+        )
+       )
      (printlistrecords (get-columns-table (get-table tables table-name)))
      (println "")
      (println "============================================================================================================")
@@ -806,6 +924,21 @@
     ((myelse)(println "La tabla no existe."))
     )
   )
+
+(define (print-relations-table relations)
+  (cond
+    ((null? relations)
+     )
+    ((myelse)
+     (display "Hacia la tabla: ")
+     (display (caar relations))
+     (display " existe, llave foranea: ")
+     (println (cadar relations))
+     (print-relations-table (cdr relations))
+     )
+    )
+  )
+
 
 ;se encarga de imiprimir record por record una tabla
 (define (simple-query-aux-aux records)
@@ -851,6 +984,14 @@
         (println "============================================================================================================")
         (display "Tabla: ")
         (println table-name)
+        (cond
+          ((null? (cddddr (car tables)))
+           (println "Esta tabla no se relaciona con ninguna otra.")
+           )
+          ((myelse)
+           (print-relations-table (car (cddddr (car tables))))
+           )
+          )
         (cond
           ((equal? especific-columns '(all))
            (printlistrecords (get-columns-table (get-table tables table-name)))
@@ -932,6 +1073,14 @@
         (println "============================================================================================================")
         (display "Tabla: ")
         (println table-name)
+        (cond
+          ((null? (cddddr (car tables)))
+           (println "Esta tabla no se relaciona con ninguna otra.")
+           )
+          ((myelse)
+           (print-relations-table (car (cddddr (car tables))))
+           )
+          )
         (cond
           ((equal? especific-columns '(all))
            (printlistrecords (get-columns-table (get-table tables table-name)))

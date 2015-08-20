@@ -22,8 +22,14 @@
    ((create-table-exp? input-text)
     (create-table enviroment input-text)
     )
+   ((remove-table-exp? input-text)
+    (delete-table enviroment input-text)
+    )
    ((add-ref-exp? input-text)
     (add-reference-table enviroment input-text)
+    )
+   ((remove-ref-exp? input-text)
+    (remove-reference-table enviroment input-text)
     )
    ((insert-record-exp? input-text)
     (insert-record enviroment input-text)
@@ -90,10 +96,11 @@
 
 ;addt estudiantes id nombre appel
 ;addt estudiantecs id nombre appel
-;addr estudiantes id estudiantecs
+;addr estudiantes ider estudiantecs
 
 
 ;addt estudiantes id nombre appel
+;dt estudiantes
 ;insert estudiantes 604220930 cristian rivera
 ;insert estudiantes (id nombre appel) 604220930 cristian rivera
 ;rr estudiantes 604220930
