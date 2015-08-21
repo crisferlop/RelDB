@@ -606,6 +606,26 @@
   )
 
 
+(define (list-has-elements lista listb)
+  (cond
+    ((null? lista)#f)
+    ((myelse) (list-has-elements-aux lista listb))
+    )
+  )
+
+(define (list-has-elements-aux lista listb)
+  (cond
+    ((null? listb)#t)
+    ((exist-element-on-table? (car listb) lista)
+     (list-has-elements lista (cdr listb))
+     )
+    ((myelse)
+     #f
+     )
+    )
+  )
+
+
 ;funcion insert-record-specific-aux-aux
 ;es la funcion de auxilio de insert-record-specific-aux, se encarga de verificar si la existe la columna de la clave principal en el 
 ;filtro en caso de que no exista esta columna retorna la variable de entorno intacta, y un mensaje que indica esto.
@@ -625,10 +645,19 @@
           ((exist-element-on-table? (cadar tables) filter)
            ;(append (list (append-record (car tables) (cdr in))) (cdr tables))
            (cond
+             
              ((have-foreing-key? (cddddr (car tables)) filter)
-              (append (list (append-record (car tables) (init-record-columns (get-columns-table (car tables)) 
-                                                                             (create-nils-list (lenght-list? (get-columns-table (car tables)))) (merge-list filter (cdr in) '()) )) 
-                            )(cdr tables))
+              (cond
+                ((list-has-elements (get-columns-table (car tables)) filter)
+                 (append (list (append-record (car tables) (init-record-columns (get-columns-table (car tables)) 
+                                                                                (create-nils-list (lenght-list? (get-columns-table (car tables)))) (merge-list filter (cdr in) '()) )) 
+                               )(cdr tables))
+                 )
+                ((myelse)
+                 (println "Alguna de las columnas no existe por favor verifique su entrada.")
+                 tables
+                 )
+                )
               )
              ((myelse)
               (println "La(s) llave(s) foranea(s) del elemento no se ingresaron por favor verifique.")
@@ -639,9 +668,10 @@
           ((myelse)
            (println "No se ha insertado la la columna de la llave primaria.")
            tables
-           )        
+           )
           )
         )
+       
        ((myelse)
         (println "La cantidad de elementos a insertar no coincide con las columnas elegidas por favor verifique.")
         tables

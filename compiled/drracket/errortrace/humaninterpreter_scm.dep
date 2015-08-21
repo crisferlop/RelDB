@@ -1,1 +1,1 @@
-("5.3.6" ("17f3692a1bc8c7f97d974d55d1210343f1092180" . "28489fa8d21baccf782ff15437fe900c8b6e4625") #"/home/cristianfernando/Escritorio/Proyecto1/Program/logicsentences.scm" (collects #"racket" #"main.rkt") (collects #"racket" #"lang" #"reader.rkt"))
+("6.2" ("9b82ec5232d37431120fcc0dc095f389e0197000" . "2d6dfd463d5f3f9069a7c533f54914a6b726eefa") #"/home/ismael/Escritorio/RelDB/logicsentences.scm" (collects #"racket" #"runtime-config.rkt") (collects #"errortrace" #"errortrace-key.rkt") (collects #"racket" #"main.rkt"))
