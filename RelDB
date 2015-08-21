@@ -54,7 +54,6 @@
     (insert-record-specific enviroment input-text)
     )
    ((cprog-exp? input-text)
-    (println "Es un comando valido")
     (store-procedure enviroment input-text)
     )
    ((eval-expr? input-text)
@@ -73,7 +72,7 @@
   )
 
 (define (reldb db)
-  (println db)
+  ;(println db)
   (println "que desea realizar?")
   (display "> ")
   (cond 
